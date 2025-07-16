@@ -1,14 +1,18 @@
 import anthropic
 from prompts import judge_prompt
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-
-def run_judge(original_image, clone_image):
-    client = anthropic.Anthropic()
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
+async def run_judge(original_image, clone_image):
+    client = anthropic.AsyncAnthropic()
     
     try:
-        judge_message = client.messages.create(
+        judge_message = await client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=20000,
+            max_tokens=10000,
             temperature=1,
             system=judge_prompt,
             messages=[

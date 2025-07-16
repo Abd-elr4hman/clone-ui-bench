@@ -1,7 +1,7 @@
-from src.utils import extract_content
+from src.utils.parse_responses import extract_clone
 import htmlmin
 
-def test_extract_content():
+def test_extract_clone():
     input_text = """
         Some text before
         <HTML>
@@ -19,7 +19,7 @@ def test_extract_content():
         </CSS>
         Text after
         """
-    assert htmlmin.minify(extract_content(input_text)["body"], remove_empty_space=True) == htmlmin.minify("""<body>
+    assert htmlmin.minify(extract_clone(input_text)["body"], remove_empty_space=True) == htmlmin.minify("""<body>
             <div style="background: lightblue; padding: 20px;">
                 <h1>Hello World</h1>
                 <p>This is rendered content</p>

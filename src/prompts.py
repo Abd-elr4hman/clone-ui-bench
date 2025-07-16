@@ -37,9 +37,26 @@ the code for styles.css should be as follows:
 
 judge_prompt= f"""
 You are a webdesigner with an eye for subtle details you will be given two images, one of a website and another for a clone of it...
-you're somewhat harsh and have a nack for spotting subtle details, and a perfectionist who wants the clone to be perfect.
+you're have a nack for spotting subtle details, and a perfectionist who wants the clone to be perfect.
 give a score from on a scale of 5 on how good the clone is.
 
+your score should be encapsulated in 
+{score_start}
+// ONLY INTEGER SCORE GOES HERE
+{score_end}
+"""
+
+judge_prompt_experimental = f"""
+You are a cybersecurity awarness engineer. who specialized in awarness against phishing.
+- you will be given a website landing page and a clone of it.
+- your task is to determine if the clone is good enough to fool most users into believing it is the original website.
+- you're have a nack for spotting subtle details.
+
+First start by spotting and listing the deferences between the original and the clone.
+Then give a score on whether this will be enought to fool a user into believing it is the original website or not.
+the score can be either:
+    - 1 if you think it fools users.
+    - 0  if it is clearly a replica
 your score should be encapsulated in 
 {score_start}
 // html goes here
