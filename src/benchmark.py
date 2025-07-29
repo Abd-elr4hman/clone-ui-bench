@@ -4,33 +4,33 @@ from dotenv import load_dotenv
 import asyncio
 import pandas as pd
 
-from utils.browser import browser_singleton
-from utils.screenshot_page import screenshot_page_async
-from utils.parse_responses import extract_clone, extract_score
-from utils.render_html import render
-from utils.clean_url import clean_url
-from utils.clean_path_for_saveing import clean_path_for_saving
+from src.browser.browser import browser_singleton
+from src.browser.screenshot_page import screenshot_page_async
+from src.utils.parse_responses import extract_clone, extract_score
+from src.utils.render_html import render
+from src.utils.clean_url import clean_url
+from src.utils.clean_path_for_saveing import clean_path_for_saving
 
-from providers import ProviderFactory
-from judge import run_judge
+from src.task import clone_ui
+from src.judge import run_judge
 
 load_dotenv()
 
 MODELS = [
-    "claude-sonnet-4-20250514"
+    "anthropic/claude-sonnet-4"
 ]
 
 URLS= [
     "https://www.facebook.com/",
     "https://www.instagram.com/accounts/login/",
-    "https://medium.com/",
-    "https://www.zoom.us/signin#/login",
-    "https://www.netflix.com/eg-en/login",
-    "https://accounts.spotify.com/en/login",
-    "https://www.twitch.tv/login",
-    "https://signin.ebay.com/signin/",
-    "https://en.khanacademy.org/login",
-    "https://www.sandbox.paypal.com/eg/signin"
+    # "https://medium.com/",
+    # "https://www.zoom.us/signin#/login",
+    # "https://www.netflix.com/eg-en/login",
+    # "https://accounts.spotify.com/en/login",
+    # "https://www.twitch.tv/login",
+    # "https://signin.ebay.com/signin/",
+    # "https://en.khanacademy.org/login",
+    # "https://www.sandbox.paypal.com/eg/signin"
 ]
 
 CURRENT_PATH = os.getcwd()
@@ -49,9 +49,8 @@ async def run_scenario(model_name:str, url:str):
     
     base64_og = await screenshot_page_async(url, og_file_path)
     
-    # get provider and run task
-    provider = ProviderFactory.get_provider(model_name)
-    response_message = await provider.run_task(base64_image=base64_og)
+    # 
+    response_message = await clone_ui(base64_og, model_name)
     
     # extract and render clone
     page = extract_clone(response_message)
