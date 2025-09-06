@@ -79,7 +79,8 @@ async def run_scenario(model_name:str, url:str):
                 'base64_og': clean_path_for_saving(og_file_path),
                 'base64_clone': clean_path_for_saving(clone_file_path),
                 'judge_score': judge_score,
-                "judge_response": judge_response_message
+                "judge_response": judge_response_message,
+                "response_message": response_message
             }
 
 
@@ -97,6 +98,11 @@ async def run_benchmark():
                     continue
 
             all_results.append(results)
+
+            # Write all at once
+            import json
+            with open("data.json", "w") as json_file:
+                json.dump(all_results, json_file, indent=4)
     finally:
         # Clean up singleton
         await browser_singleton.close()
