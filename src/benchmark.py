@@ -98,12 +98,8 @@ async def run_benchmark():
                     print(f"Error in result {i}: {result}")
                     continue
 
-            all_results.append(results)
+            all_results += results
 
-            # Write all at once
-            # import json
-            # with open("data.json", "w") as json_file:
-            #     json.dump(all_results, json_file, indent=4)
     finally:
         # Clean up singleton
         await browser_singleton.close()
