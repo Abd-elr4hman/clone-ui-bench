@@ -16,11 +16,22 @@ from src.judge import run_judge
 
 load_dotenv()
 
-MODELS = ["anthropic/claude-sonnet-4"]
+MODELS = [
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-opus-4.1",
+    # "google/gemini-2.5-flash-image-preview",
+    # "google/gemini-2.5-proz-ai/glm-4.5v",
+    # "openai/gpt-5",
+    # "openai/gpt-5-mini",
+    # "openai/o3-pro",
+    # "bytedance/ui-tars-1.5-7b",
+    # "x-ai/grok-4",
+    # "baidu/ernie-4.5-vl-424b-a47b",
+]
 
 URLS = [
     "https://www.facebook.com/",
-    "https://www.instagram.com/accounts/login/",
+    # "https://www.instagram.com/accounts/login/",
     # "https://medium.com/",
     # "https://www.zoom.us/signin#/login",
     # "https://www.netflix.com/eg-en/login",
@@ -37,7 +48,9 @@ CURRENT_PATH = os.getcwd()
 async def run_scenario(model_name: str, url: str):
     # visit website and screen it
     og_file_name = clean_url(url)
-    og_file_path = os.path.join(CURRENT_PATH, "data", "og", og_file_name + ".png")
+    og_file_path = os.path.join(
+        CURRENT_PATH, "data", "og", model_name, og_file_name + ".png"
+    )
 
     try:
         directory = os.path.dirname(og_file_path)
@@ -58,7 +71,7 @@ async def run_scenario(model_name: str, url: str):
     # save rendered clone
     clone_file_name = clean_url(url)
     clone_file_path = os.path.join(
-        CURRENT_PATH, "data", "clone", clone_file_name + ".png"
+        CURRENT_PATH, "data", "clone", model_name, clone_file_name + ".png"
     )
 
     try:
@@ -88,17 +101,16 @@ async def run_scenario(model_name: str, url: str):
 async def run_benchmark():
     all_results = []
     try:
-        for model_name in MODELS:
-            tasks = [run_scenario(model_name, url) for url in URLS]
+        tasks = [run_scenario(model_name, url) for url in URLS for model_name in MODELS]
 
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    print(f"Error in result {i}: {result}")
-                    continue
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                print(f"Error in result {i}: {result}")
+                continue
 
-            all_results += results
+        all_results += results
 
     finally:
         # Clean up singleton
