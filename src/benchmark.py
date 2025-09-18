@@ -10,6 +10,7 @@ from src.utils.parse_responses import extract_clone, extract_score
 from src.utils.render_html import render
 from src.utils.clean_url import clean_url
 from src.utils.clean_path_for_saveing import clean_path_for_saving
+from src.utils.write_result_to_csv import write_result_to_csv
 
 from src.task import clone_ui
 from src.judge import run_judge
@@ -45,6 +46,7 @@ URLS = [
 
 API_SEMAPHORE = asyncio.Semaphore(3)
 CURRENT_PATH = os.getcwd()
+RESULT_PATH = os.path.join(CURRENT_PATH, "data")
 
 
 @rate_limit(API_SEMAPHORE)
@@ -112,8 +114,8 @@ async def run_benchmark():
             if isinstance(result, Exception):
                 print(f"Error in result {i}: {result}")
                 continue
-
-        all_results += results
+            if isinstance(result, dict):
+                all_results.append(result)
 
     finally:
         # Clean up singleton

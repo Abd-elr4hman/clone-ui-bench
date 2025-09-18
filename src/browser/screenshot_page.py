@@ -1,9 +1,7 @@
 import base64
 from .browser import browser_singleton
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def screenshot_page_async(url: str, output_path: str):
     """Screenshot function using singleton browser"""
     browser = await browser_singleton.get_browser()
