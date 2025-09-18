@@ -19,27 +19,27 @@ load_dotenv()
 MODELS = [
     "anthropic/claude-sonnet-4",
     "anthropic/claude-opus-4.1",
-    # "google/gemini-2.5-flash-image-preview",
-    # "google/gemini-2.5-proz-ai/glm-4.5v",
-    # "openai/gpt-5",
-    # "openai/gpt-5-mini",
-    # "openai/o3-pro",
-    # "bytedance/ui-tars-1.5-7b",
-    # "x-ai/grok-4",
-    # "baidu/ernie-4.5-vl-424b-a47b",
+    "google/gemini-2.5-flash-image-preview",
+    "google/gemini-2.5-proz-ai/glm-4.5v",
+    "openai/gpt-5",
+    "openai/gpt-5-mini",
+    "openai/o3-pro",
+    "bytedance/ui-tars-1.5-7b",
+    "x-ai/grok-4",
+    "baidu/ernie-4.5-vl-424b-a47b",
 ]
 
 URLS = [
     "https://www.facebook.com/",
-    # "https://www.instagram.com/accounts/login/",
-    # "https://medium.com/",
-    # "https://www.zoom.us/signin#/login",
-    # "https://www.netflix.com/eg-en/login",
-    # "https://accounts.spotify.com/en/login",
-    # "https://www.twitch.tv/login",
-    # "https://signin.ebay.com/signin/",
-    # "https://en.khanacademy.org/login",
-    # "https://www.sandbox.paypal.com/eg/signin"
+    "https://www.instagram.com/accounts/login/",
+    "https://medium.com/",
+    "https://www.zoom.us/signin#/login",
+    "https://www.netflix.com/eg-en/login",
+    "https://accounts.spotify.com/en/login",
+    "https://www.twitch.tv/login",
+    "https://signin.ebay.com/signin/",
+    "https://en.khanacademy.org/login",
+    "https://www.sandbox.paypal.com/eg/signin",
 ]
 
 CURRENT_PATH = os.getcwd()
