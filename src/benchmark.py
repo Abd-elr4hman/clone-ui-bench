@@ -13,6 +13,7 @@ from src.utils.clean_path_for_saveing import clean_path_for_saving
 
 from src.task import clone_ui
 from src.judge import run_judge
+from src.rate_limiter.rate_limiter import rate_limit
 
 load_dotenv()
 
@@ -42,9 +43,11 @@ URLS = [
     "https://www.sandbox.paypal.com/eg/signin",
 ]
 
+API_SEMAPHORE = asyncio.Semaphore(3)
 CURRENT_PATH = os.getcwd()
 
 
+@rate_limit(API_SEMAPHORE)
 async def run_scenario(model_name: str, url: str):
     # visit website and screen it
     og_file_name = clean_url(url)
