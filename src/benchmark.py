@@ -10,15 +10,21 @@ from src.utils.parse_responses import extract_clone, extract_score
 from src.utils.render_html import render
 from src.utils.clean_url import clean_url
 from src.utils.clean_path_for_saveing import clean_path_for_saving
-from src.utils.write_result_to_csv import write_result_to_csv
 
 from src.task import clone_ui
 from src.judge import run_judge
 from src.rate_limiter.rate_limiter import rate_limit
+from src.utils.load_config import load_config
 
 load_dotenv()
 
-MODELS = [
+
+API_SEMAPHORE = asyncio.Semaphore(3)
+CURRENT_PATH = os.getcwd()
+RESULT_PATH = os.path.join(CURRENT_PATH, "data")
+
+
+DEFAULT_MODELS = [
     "anthropic/claude-sonnet-4",
     "anthropic/claude-opus-4.1",
     "google/gemini-2.5-flash-image-preview",
@@ -34,7 +40,7 @@ MODELS = [
     "qwen/qwen3-vl-235b-a22b-thinking",
 ]
 
-URLS = [
+DEFAULT_URLS = [
     "https://stripe.com",
     "https://airbnb.com",
     "https://github.com",
@@ -56,10 +62,6 @@ URLS = [
     "https://vercel.com",
     "https://tailwindcss.com",
 ]
-
-API_SEMAPHORE = asyncio.Semaphore(3)
-CURRENT_PATH = os.getcwd()
-RESULT_PATH = os.path.join(CURRENT_PATH, "data")
 
 
 @rate_limit(API_SEMAPHORE)
@@ -116,10 +118,16 @@ async def run_scenario(model_name: str, url: str):
     }
 
 
-async def run_benchmark():
+async def run_benchmark(config_file: str = None):
+    # Load configuration
+    if config_file:
+        models, urls = load_config(config_file)
+    else:
+        models, urls = DEFAULT_MODELS, DEFAULT_URLS
+
     all_results = []
     try:
-        tasks = [run_scenario(model_name, url) for url in URLS for model_name in MODELS]
+        tasks = [run_scenario(model_name, url) for url in urls for model_name in models]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -143,11 +151,8 @@ async def run_benchmark():
         directory = os.path.dirname(df_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
-    except OSError as e:
-        raise f"Error creating directory or file: {e}"
+    except Exception as e:
+        raise OSError(f"Error creating directory or file: {e}")
 
     # With additional options
     df.to_csv(df_path, index=False, encoding="utf-8", sep=",")
-
-
-asyncio.run(run_benchmark())

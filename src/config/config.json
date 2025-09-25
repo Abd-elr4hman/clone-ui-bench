@@ -1,0 +1,8 @@
+{
+  "models": [
+    "anthropic/claude-sonnet-4"
+  ],
+  "urls": [
+    "https://stripe.com"
+  ]
+}
