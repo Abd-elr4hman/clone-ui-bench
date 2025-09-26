@@ -111,3 +111,7 @@ data/
 ├── clone/ # AI-generated clone screenshots
 └── results.csv # Benchmark results and scores
 ```
+
+## Todos:
+* [x] Test simple web ui cloning with simple image inputs.
+* [ ] Evolve the test tasks to provide the llm resources like images and icons to use.
