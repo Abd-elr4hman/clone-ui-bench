@@ -3,6 +3,25 @@
     "anthropic/claude-sonnet-4"
   ],
   "urls": [
-    "https://stripe.com"
+    "https://stripe.com",
+    "https://airbnb.com",
+    "https://github.com",
+    "https://dribbble.com",
+    "https://medium.com",
+    "https://spotify.com",
+    "https://netflix.com",
+    "https://apple.com",
+    "https://google.com",
+    "https://twitter.com",
+    "https://linkedin.com",
+    "https://instagram.com",
+    "https://youtube.com",
+    "https://amazon.com",
+    "https://slack.com",
+    "https://discord.com",
+    "https://figma.com",
+    "https://notion.so",
+    "https://vercel.com",
+    "https://tailwindcss.com"
   ]
 }

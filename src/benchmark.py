@@ -64,7 +64,6 @@ DEFAULT_URLS = [
 ]
 
 
-@rate_limit(API_SEMAPHORE)
 async def run_scenario(model_name: str, url: str):
     # visit website and screen it
     og_file_name = clean_url(url)
@@ -118,7 +117,7 @@ async def run_scenario(model_name: str, url: str):
     }
 
 
-async def run_benchmark(config_file: str = None):
+async def run_benchmark(parallel: int = 3, config_file: str = None):
     # Load configuration
     if config_file:
         models, urls = load_config(config_file)
@@ -126,8 +125,16 @@ async def run_benchmark(config_file: str = None):
         models, urls = DEFAULT_MODELS, DEFAULT_URLS
 
     all_results = []
+
+    semaphore = asyncio.Semaphore(parallel)
+    limited_run_scenario = rate_limit(semaphore)(run_scenario)
+
     try:
-        tasks = [run_scenario(model_name, url) for url in urls for model_name in models]
+        tasks = [
+            limited_run_scenario(model_name, url)
+            for url in urls
+            for model_name in models
+        ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
