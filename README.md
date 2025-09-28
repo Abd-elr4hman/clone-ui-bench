@@ -113,6 +113,7 @@ data/
 ```
 
 ## Todos:
-* [x] Test simple web ui cloning with simple image inputs.
-* [ ] Evolve the test tasks to provide the llm resources like images and icons to use.
-* [ ] Run training experiments on a small vlm with RL and judge reward.
+
+- [x] Test simple web ui cloning with simple image inputs.
+- [ ] Evolve the test tasks to provide the llm assets like images and icons to use.
+- [ ] Run training experiments on a small vlm with RL and judge reward.
