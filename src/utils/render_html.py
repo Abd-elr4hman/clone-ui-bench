@@ -13,6 +13,11 @@ def render(html_body:str, css:str):
         <!DOCTYPE html>
         <html>
         <head>
+            <!-- The page is served as a base64 data URL, which carries no
+                 charset, so without this the browser decodes our UTF-8 bytes as
+                 windows-1252 and every em dash, curly quote and arrow renders
+                 as mojibake. -->
+            <meta charset="utf-8">
             <style>{css}</style>
         </head>
         <body>

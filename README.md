@@ -21,7 +21,42 @@ Latest run: a 3-URL pilot across 8 frontier models, scored by a 3-judge panel.
 
 Scores are the mean judge score as a percentage of the maximum (10). Pilot spend was **$8.03** for 22 completed tasks.
 
+All scores above were produced before the charset fix in `render_html`, which had been rendering every non-ASCII character (em dashes, curly quotes, arrows) as mojibake in the clone screenshots. They therefore understate every model slightly.
+
 `n` varies because OpenRouter returned `402 in_flight_budget_exhausted` under 6-way parallelism, dropping two tasks and one task's entire judge panel. That error is a 4xx and so is not retried by the current policy, despite being transient with a `Retry-After` — worth fixing before a larger run, and worth lowering parallelism for. Rows with fewer tasks are correspondingly less reliable.
+
+### Examples
+
+Target versus clone for the top four models, all on `stripe.com`. Each model is
+screenshotted separately, so the targets differ slightly - a live page moves
+between captures, and the judge always compares a clone against its own target.
+
+#### openai/gpt-6-astra-pro — 8.7/10
+
+| Target | Clone |
+| --- | --- |
+| ![target](./resources/examples/gpt-6-astra-pro-og.jpg) | ![clone](./resources/examples/gpt-6-astra-pro-clone.jpg) |
+
+#### moonshotai/kimi-k3 — 7.7/10
+
+| Target | Clone |
+| --- | --- |
+| ![target](./resources/examples/kimi-k3-og.jpg) | ![clone](./resources/examples/kimi-k3-clone.jpg) |
+
+#### qwen/qwen3.8-max-0902 — 7.7/10
+
+| Target | Clone |
+| --- | --- |
+| ![target](./resources/examples/qwen3.8-max-og.jpg) | ![clone](./resources/examples/qwen3.8-max-clone.jpg) |
+
+#### anthropic/claude-opus-5 — 7.3/10
+
+| Target | Clone |
+| --- | --- |
+| ![target](./resources/examples/claude-opus-5-og.jpg) | ![clone](./resources/examples/claude-opus-5-clone.jpg) |
+
+These clones were re-rendered after the charset fix noted above. The scores
+shown were produced before it, and so understate every model slightly.
 
 ### Self-preference check
 

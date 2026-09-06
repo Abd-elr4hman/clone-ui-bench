@@ -1,4 +1,5 @@
 from src.utils.parse_responses import extract_clone
+from src.utils.render_html import render
 import htmlmin
 
 def test_extract_clone():
@@ -49,3 +50,14 @@ def test_extract_clone_returns_none_when_blocks_missing():
 
     assert result["body"] is None
     assert result["css"] is None
+
+
+def test_render_declares_utf8():
+    """A data URL carries no charset, so the document must declare its own."""
+    import base64
+
+    data_url = render("<p>models—from</p>", "p { color: red; }")
+    html = base64.b64decode(data_url.split(",", 1)[1]).decode("utf-8")
+
+    assert '<meta charset="utf-8">' in html
+    assert html.index("<meta charset") < html.index("<style>")
