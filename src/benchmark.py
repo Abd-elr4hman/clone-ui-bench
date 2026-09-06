@@ -83,6 +83,21 @@ async def run_scenario(model_name: str, url: str):
 
     # extract and render clone
     page = extract_clone(response_message)
+
+    # The task prompt makes the <HTML>/<CSS> blocks mandatory, so a response
+    # without them is a failed task, not a broken run. Score it 0 and move on.
+    if page["body"] is None or page["css"] is None:
+        return {
+            "url": url,
+            "model_name": model_name,
+            "base64_og": clean_path_for_saving(og_file_path),
+            "base64_clone": None,
+            "judge_score": 0,
+            "judge_response": None,
+            "response_message": response_message,
+            "error": "response missing <HTML>/<CSS> blocks",
+        }
+
     rendered = render(page["body"], page["css"])
 
     # save rendered clone
@@ -112,6 +127,7 @@ async def run_scenario(model_name: str, url: str):
         "judge_score": judge_score,
         "judge_response": judge_response_message,
         "response_message": response_message,
+        "error": None,
     }
 
 
