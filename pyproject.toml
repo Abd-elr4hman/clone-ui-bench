@@ -21,3 +21,9 @@ dependencies = [
     "selenium>=4.34.2",
     "tenacity>=9.1.2",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: hits the live OpenRouter API and costs money",
+]
+addopts = "-m 'not integration'"

@@ -1,7 +1,11 @@
+import json
+
+import httpx
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from tenacity import RetryError, wait_none
+from openai import APIConnectionError, APIStatusError, BadRequestError
+from tenacity import wait_none
 
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
@@ -63,23 +67,71 @@ async def test_clone_ui_sends_screenshot_as_data_url():
     assert kwargs["model"] == "openai/gpt-4.1"
 
     user_content = kwargs["messages"][1]["content"]
-    assert user_content[1]["image_url"] == f"data:image/png;base64,{base64_image}"
+    assert user_content[1]["image_url"] == {
+        "url": f"data:image/png;base64,{base64_image}"
+    }
 
 
 @pytest.mark.asyncio
-async def test_clone_ui_retries_then_raises_on_api_errors():
-    """A persistent API failure is retried 3 times, then raises.
-
-    clone_ui wraps the error in a RuntimeError, but tenacity keeps its default
-    reraise=False, so what escapes is a RetryError holding that RuntimeError.
-    """
-    create = AsyncMock(side_effect=ConnectionError("boom"))
+async def test_clone_ui_retries_transient_errors_then_raises():
+    """A transient failure is retried 3 times, then the real error escapes."""
+    create = AsyncMock(side_effect=APIConnectionError(request=httpx.Request("POST", "/")))
     # retry_with drops the exponential backoff so the test doesn't sleep
     no_wait_clone_ui = clone_ui.retry_with(wait=wait_none())
 
     with patch("src.task.client.chat.completions.create", create):
-        with pytest.raises(RetryError) as excinfo:
+        with pytest.raises(APIConnectionError):
             await no_wait_clone_ui("deadbeef", "openai/gpt-4.1")
 
     assert create.await_count == 3
-    assert isinstance(excinfo.value.last_attempt.exception(), RuntimeError)
+
+
+@pytest.mark.asyncio
+async def test_clone_ui_does_not_retry_client_errors():
+    """A bad request is the caller's fault - fail on the first attempt."""
+    create = AsyncMock(
+        side_effect=BadRequestError(
+            "no such model",
+            response=httpx.Response(400, request=httpx.Request("POST", "/")),
+            body=None,
+        )
+    )
+
+    with patch("src.task.client.chat.completions.create", create):
+        with pytest.raises(BadRequestError):
+            await clone_ui("deadbeef", "not-a-real/model")
+
+    assert create.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_clone_ui_retries_non_json_gateway_responses():
+    """OpenRouter occasionally returns a non-JSON body. That is transient."""
+    create = AsyncMock(side_effect=json.JSONDecodeError("Expecting value", "", 0))
+    no_wait_clone_ui = clone_ui.retry_with(wait=wait_none())
+
+    with patch("src.task.client.chat.completions.create", create):
+        with pytest.raises(json.JSONDecodeError):
+            await no_wait_clone_ui("deadbeef", "openai/gpt-4.1")
+
+    assert create.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_clone_ui_retries_server_errors_but_not_client_errors():
+    """5xx is the gateway's problem and retried; 4xx is ours and is not."""
+    def status_error(code):
+        return APIStatusError(
+            "boom",
+            response=httpx.Response(code, request=httpx.Request("POST", "/")),
+            body=None,
+        )
+
+    no_wait_clone_ui = clone_ui.retry_with(wait=wait_none())
+
+    for code, expected_calls in [(500, 3), (429, 3), (404, 1), (400, 1)]:
+        create = AsyncMock(side_effect=status_error(code))
+        with patch("src.task.client.chat.completions.create", create):
+            with pytest.raises(APIStatusError):
+                await no_wait_clone_ui("deadbeef", "openai/gpt-4.1")
+        assert create.await_count == expected_calls, f"HTTP {code}"
