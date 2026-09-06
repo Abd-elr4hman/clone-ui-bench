@@ -12,7 +12,7 @@ from src.utils.clean_url import clean_url
 from src.utils.clean_path_for_saveing import clean_path_for_saving
 
 from src.task import clone_ui
-from src.judge import run_judge
+from src.judge import DEFAULT_JUDGES, run_judges
 from src.rate_limiter.rate_limiter import rate_limit
 from src.utils.load_config import load_config
 
@@ -23,19 +23,13 @@ CURRENT_PATH = os.getcwd()
 
 
 DEFAULT_MODELS = [
-    "anthropic/claude-sonnet-4",
-    "anthropic/claude-opus-4.1",
-    "google/gemini-2.5-flash-image-preview",
-    "google/gemini-2.5-pro",
-    "z-ai/glm-4.5v",
-    "openai/gpt-5",
-    "openai/gpt-5-mini",
-    "openai/o3-pro",
-    "bytedance/ui-tars-1.5-7b",
-    "x-ai/grok-4",
-    "baidu/ernie-4.5-vl-424b-a47b",
-    "qwen/qwen3-vl-235b-a22b-instruct",
-    "qwen/qwen3-vl-235b-a22b-thinking",
+    "openai/gpt-6-astra-pro",
+    "anthropic/claude-opus-5",
+    "google/gemini-3.8-flash",
+    "x-ai/grok-4.6",
+    "qwen/qwen3.8-max-0902",
+    "moonshotai/kimi-k3",
+    "z-ai/glm-5v-turbo",
 ]
 
 DEFAULT_URLS = [
@@ -62,7 +56,18 @@ DEFAULT_URLS = [
 ]
 
 
-async def run_scenario(model_name: str, url: str):
+def safe_extract_score(response_message):
+    """Parse a judge score, or None if the judge broke format."""
+    if response_message is None:
+        return None
+    try:
+        return extract_score(response_message)
+    except Exception as e:
+        print(f"could not parse judge score ({type(e).__name__}: {e})")
+        return None
+
+
+async def run_scenario(model_name: str, url: str, judge_models: list[str]):
     # visit website and screen it
     og_file_name = clean_url(url)
     og_file_path = os.path.join(
@@ -93,9 +98,11 @@ async def run_scenario(model_name: str, url: str):
             "base64_og": clean_path_for_saving(og_file_path),
             "base64_clone": None,
             "judge_score": 0,
-            "judge_response": None,
+            "judge_models": ",".join(judge_models),
             "response_message": response_message,
             "error": "response missing <HTML>/<CSS> blocks",
+            **{f"judge_score::{m}": None for m in judge_models},
+            **{f"judge_response::{m}": None for m in judge_models},
         }
 
     rendered = render(page["body"], page["css"])
@@ -115,28 +122,41 @@ async def run_scenario(model_name: str, url: str):
 
     base64_clone = await screenshot_page_async(rendered, clone_file_path)
 
-    # judge model
-    judge_response_message = await run_judge(base64_og, base64_clone)
-    judge_score = extract_score(judge_response_message)
+    # judge panel
+    judge_responses = await run_judges(base64_og, base64_clone, judge_models)
+    judge_scores = {m: safe_extract_score(r) for m, r in judge_responses.items()}
+
+    scored = [s for s in judge_scores.values() if s is not None]
+    mean_score = sum(scored) / len(scored) if scored else None
 
     return {
         "url": url,
         "model_name": model_name,
         "base64_og": clean_path_for_saving(og_file_path),
         "base64_clone": clean_path_for_saving(clone_file_path),
-        "judge_score": judge_score,
-        "judge_response": judge_response_message,
+        "judge_score": mean_score,
+        "judge_models": ",".join(judge_models),
         "response_message": response_message,
-        "error": None,
+        "error": None if scored else "every judge failed",
+        **{f"judge_score::{m}": s for m, s in judge_scores.items()},
+        **{f"judge_response::{m}": r for m, r in judge_responses.items()},
     }
 
 
-async def run_benchmark(parallel: int = 3, config_file: str = None):
+async def run_benchmark(
+    parallel: int = 3, config_file: str = None, judge_models: list[str] = None
+):
     # Load configuration
     if config_file:
-        models, urls = load_config(config_file)
+        models, urls, config_judges = load_config(config_file)
     else:
-        models, urls = DEFAULT_MODELS, DEFAULT_URLS
+        models, urls, config_judges = DEFAULT_MODELS, DEFAULT_URLS, DEFAULT_JUDGES
+
+    # An explicit --judge beats the config file, which beats the default.
+    judge_models = judge_models or config_judges
+
+    print(f"{len(models)} models x {len(urls)} urls = {len(models) * len(urls)} tasks")
+    print(f"judges: {', '.join(judge_models)}")
 
     all_results = []
 
@@ -145,7 +165,7 @@ async def run_benchmark(parallel: int = 3, config_file: str = None):
 
     try:
         tasks = [
-            limited_run_scenario(model_name, url)
+            limited_run_scenario(model_name, url, judge_models)
             for url in urls
             for model_name in models
         ]

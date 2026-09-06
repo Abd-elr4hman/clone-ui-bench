@@ -1,6 +1,17 @@
 {
   "models": [
-    "anthropic/claude-sonnet-4"
+    "openai/gpt-6-astra-pro",
+    "anthropic/claude-opus-5",
+    "google/gemini-3.8-flash",
+    "x-ai/grok-4.6",
+    "qwen/qwen3.8-max-0902",
+    "moonshotai/kimi-k3",
+    "z-ai/glm-5v-turbo"
+  ],
+  "judges": [
+    "google/gemini-3.8-flash",
+    "x-ai/grok-4.6",
+    "openai/gpt-6-astra"
   ],
   "urls": [
     "https://stripe.com",
