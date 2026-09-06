@@ -19,9 +19,7 @@ from src.utils.load_config import load_config
 load_dotenv()
 
 
-API_SEMAPHORE = asyncio.Semaphore(3)
 CURRENT_PATH = os.getcwd()
-RESULT_PATH = os.path.join(CURRENT_PATH, "data")
 
 
 DEFAULT_MODELS = [
