@@ -4,7 +4,7 @@ def render(html_body:str, css:str):
     """Render HTML/CSS."""
 
     # check html and css are not empty
-    if len(html_body) == 0 | len(css) ==0 :
+    if len(html_body) == 0 or len(css) == 0:
         raise ValueError("Invalid html or css. Must be a non empty string.")
 
     
