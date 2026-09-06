@@ -9,6 +9,7 @@ from tenacity import wait_none
 
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
+from openai.types.completion_usage import CompletionUsage
 
 from src.task import clone_ui
 
@@ -37,12 +38,13 @@ def build_completion(content: str) -> ChatCompletion:
                 message=ChatCompletionMessage(role="assistant", content=content),
             )
         ],
+        usage=CompletionUsage(prompt_tokens=100, completion_tokens=200, total_tokens=300),
     )
 
 
 @pytest.mark.asyncio
 async def test_clone_ui_returns_message_content():
-    """clone_ui unwraps the completion and returns the content string."""
+    """clone_ui unwraps the completion into content plus usage."""
     base64_image = read_file("src/tests/base64_image_string.txt")
     expected = "<HTML><body><h1>Hi</h1></body></HTML>\n<CSS>h1 { color: red; }</CSS>"
 
@@ -50,8 +52,8 @@ async def test_clone_ui_returns_message_content():
     with patch("src.task.client.chat.completions.create", create):
         message = await clone_ui(base64_image, "openai/gpt-4.1")
 
-    assert isinstance(message, str)
-    assert message == expected
+    assert isinstance(message.content, str)
+    assert message.content == expected
 
 
 @pytest.mark.asyncio
@@ -65,6 +67,8 @@ async def test_clone_ui_sends_screenshot_as_data_url():
 
     kwargs = create.await_args.kwargs
     assert kwargs["model"] == "openai/gpt-4.1"
+    # OpenRouter only reports credits spent when asked to
+    assert kwargs["extra_body"] == {"usage": {"include": True}}
 
     user_content = kwargs["messages"][1]["content"]
     assert user_content[1]["image_url"] == {
@@ -135,3 +139,14 @@ async def test_clone_ui_retries_server_errors_but_not_client_errors():
             with pytest.raises(APIStatusError):
                 await no_wait_clone_ui("deadbeef", "openai/gpt-4.1")
         assert create.await_count == expected_calls, f"HTTP {code}"
+
+
+@pytest.mark.asyncio
+async def test_clone_ui_reports_token_usage():
+    """Usage rides along with the content so a run can price itself."""
+    create = AsyncMock(return_value=build_completion("<HTML></HTML><CSS></CSS>"))
+    with patch("src.task.client.chat.completions.create", create):
+        message = await clone_ui("deadbeef", "openai/gpt-4.1")
+
+    assert message.usage["prompt_tokens"] == 100
+    assert message.usage["completion_tokens"] == 200

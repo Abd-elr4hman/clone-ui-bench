@@ -7,13 +7,14 @@ import pytest
 
 from src.benchmark import safe_extract_score
 from src.judge import DEFAULT_JUDGES, run_judges
+from src.task import ModelResponse
 from src.utils.load_config import load_config
 
 PANEL = ["lab-a/judge", "lab-b/judge", "lab-c/judge"]
 
 
 def scored(n):
-    return f"Some analysis.\n<score>{n}</score>\nJustification."
+    return ModelResponse(f"Some analysis.\n<score>{n}</score>\nJustification.", {"cost": 0.01})
 
 
 @pytest.mark.asyncio
@@ -22,7 +23,7 @@ async def test_run_judges_collects_every_judge():
         out = await run_judges("og", "clone", PANEL)
 
     assert list(out) == PANEL
-    assert [safe_extract_score(r) for r in out.values()] == [7, 8, 9]
+    assert [safe_extract_score(r.content) for r in out.values()] == [7, 8, 9]
 
 
 @pytest.mark.asyncio
@@ -33,12 +34,12 @@ async def test_run_judges_survives_one_failing_judge():
         out = await run_judges("og", "clone", PANEL)
 
     assert out["lab-b/judge"] is None
-    usable = [safe_extract_score(r) for r in out.values() if r is not None]
+    usable = [safe_extract_score(r.content) for r in out.values() if r is not None]
     assert usable == [7, 9]
 
 
 def test_safe_extract_score_tolerates_malformed_judge_output():
-    assert safe_extract_score(scored(6)) == 6
+    assert safe_extract_score(scored(6).content) == 6
     assert safe_extract_score("I refuse to score this.") is None
     assert safe_extract_score("<score>not a number</score>") is None
     assert safe_extract_score(None) is None

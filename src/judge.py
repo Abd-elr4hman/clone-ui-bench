@@ -4,7 +4,7 @@ from src.prompts import judge_prompt, judge_system
 from tenacity import retry
 
 from src.openrouter.client import client
-from src.task import RETRY_POLICY
+from src.task import RETRY_POLICY, USAGE_ACCOUNTING, ModelResponse, usage_of
 from openai.types.chat.chat_completion import ChatCompletion
 
 # Judged by a panel rather than one model: averaging across labs dilutes any
@@ -40,14 +40,15 @@ async def run_judge(original_image, clone_image, judge_model: str):
                 ],
             },
         ],
+        extra_body=USAGE_ACCOUNTING,
     )
-    return message.choices[0].message.content
+    return ModelResponse(message.choices[0].message.content, usage_of(message))
 
 
 async def run_judges(original_image, clone_image, judge_models):
     """Score one clone with every judge on the panel, concurrently.
 
-    Returns {judge_model: response_text_or_None}. A judge that fails is
+    Returns {judge_model: ModelResponse_or_None}. A judge that fails is
     recorded as None rather than sinking the whole scenario - a panel of two
     still produces a usable score.
     """

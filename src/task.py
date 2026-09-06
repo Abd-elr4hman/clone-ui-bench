@@ -1,4 +1,5 @@
 import json
+from typing import NamedTuple
 
 from openai import APIError, APIStatusError
 from tenacity import (
@@ -26,6 +27,31 @@ def is_transient(exc: BaseException) -> bool:
     return isinstance(exc, APIError)
 
 
+class ModelResponse(NamedTuple):
+    """A model's text plus what the call cost."""
+
+    content: str
+    usage: dict
+
+
+def usage_of(message) -> dict:
+    """Pull token counts and OpenRouter's own cost figure off a response."""
+    u = getattr(message, "usage", None)
+    if u is None:
+        return {}
+    d = u.model_dump() if hasattr(u, "model_dump") else dict(u)
+    return {
+        "prompt_tokens": d.get("prompt_tokens"),
+        "completion_tokens": d.get("completion_tokens"),
+        # present because we ask for it via extra_body usage.include
+        "cost": d.get("cost"),
+    }
+
+
+# Ask OpenRouter to report credits spent alongside the completion.
+USAGE_ACCOUNTING = {"usage": {"include": True}}
+
+
 RETRY_POLICY = dict(
     retry=retry_if_exception(is_transient),
     stop=stop_after_attempt(3),
@@ -49,5 +75,6 @@ async def clone_ui(base64_image, model):
                 ],
             },
         ],
+        extra_body=USAGE_ACCOUNTING,
     )
-    return message.choices[0].message.content
+    return ModelResponse(message.choices[0].message.content, usage_of(message))

@@ -2,7 +2,56 @@
 
 A LLM as a Judge bench to evaluate web UI cloning ability using a multimodal judge.
 
-![alt text](./resources/image.png)
+## Results
+
+Latest run: a 3-URL pilot across 8 frontier models, scored by a 3-judge panel.
+
+![Pilot results](./resources/pilot_results.png)
+
+| Model | Score | n | Cost / clone |
+| --- | --- | --- | --- |
+| openai/gpt-6-astra-pro | **87.8%** | 3 | $0.855 |
+| moonshotai/kimi-k3 | 81.7% | 2 | $0.396 |
+| qwen/qwen3.8-max-0902 | 76.7% | 1 | $0.128 |
+| anthropic/claude-opus-5 | 76.7% | 3 | $0.177 |
+| anthropic/claude-fable-5.1 | 75.6% | 3 | $0.299 |
+| google/gemini-3.8-flash | 74.4% | 3 | $0.041 |
+| x-ai/grok-4.6 | 71.1% | 3 | $0.053 |
+| z-ai/glm-5v-turbo | 64.4% | 3 | $0.017 |
+
+Scores are the mean judge score as a percentage of the maximum (10). Pilot spend was **$8.03** for 22 completed tasks.
+
+`n` varies because OpenRouter returned `402 in_flight_budget_exhausted` under 6-way parallelism, dropping two tasks and one task's entire judge panel. That error is a 4xx and so is not retried by the current policy, despite being transient with a `Retry-After` — worth fixing before a larger run, and worth lowering parallelism for. Rows with fewer tasks are correspondingly less reliable.
+
+### Self-preference check
+
+Two panel members (`gemini-3.8-flash`, `grok-4.6`) also compete, and `gpt-6-astra` is a sibling of `gpt-6-astra-pro`. Per-judge scores are kept precisely so this is measurable:
+
+| Judge | Own family | Other models | Gap |
+| --- | --- | --- | --- |
+| google/gemini-3.8-flash | +0.56 | +0.02 | +0.54 |
+| x-ai/grok-4.6 | +0.56 | +0.19 | +0.37 |
+| openai/gpt-6-astra | +0.22 | −0.48 | +0.70 |
+
+Every judge favours its own family, but the top result is not an artifact of it: `gemini-3.8-flash` scored `gpt-6-astra-pro` 9/9/9, identical to what its sibling gave it. `gpt-6-astra` is also the harshest judge overall (−0.37 against the panel mean), which partly offsets its own bias.
+
+### Estimated cost of a full run
+
+Extrapolated from measured pilot costs — 8 models × 20 URLs, 3 judges:
+
+| | |
+| --- | --- |
+| Clones (160 tasks) | $39.33 |
+| Judging (480 calls) | $19.29 |
+| **Total** | **~$59** |
+
+`gpt-6-astra-pro` alone accounts for $17 of that, 29% of the bill.
+
+### Previous run (2025)
+
+The earlier 13-model benchmark, before the CSS extraction fix:
+
+![Original results](./resources/image.png)
 
 ## Requirements
 
@@ -63,6 +112,7 @@ If no config file is specified, the benchmark uses these defaults:
 
 - openai/gpt-6-astra-pro
 - anthropic/claude-opus-5
+- anthropic/claude-fable-5.1
 - google/gemini-3.8-flash
 - x-ai/grok-4.6
 - qwen/qwen3.8-max-0902
@@ -120,6 +170,8 @@ Key columns:
 | `judge_response::<model>` | That judge's full written analysis |
 | `judge_models` | The panel used for the row |
 | `error` | Why a row scored 0, e.g. a response missing the required blocks |
+| `clone_cost` / `judge_cost` / `total_cost` | Credits spent, as reported by OpenRouter |
+| `clone_prompt_tokens` / `clone_completion_tokens` | Token counts for the clone call |
 
 A model that ignores the mandatory `<HTML>`/`<CSS>` output format scores 0 with the reason recorded in `error`, rather than being dropped from the results.
 
@@ -131,6 +183,14 @@ data/
 ├── clone/ # AI-generated clone screenshots
 └── results.csv # Benchmark results and scores
 ```
+
+### Plotting
+
+```bash
+python -m src.plot [results.csv] [-o output.png]
+```
+
+Defaults to `data/results.csv` and writes `resources/image.png`. Scores are plotted as the mean judge score per model expressed as a percentage of the maximum, with the task count on each label. A mean rather than a total, so a model that lost rows to API failures isn't silently penalised.
 
 ## Todos:
 

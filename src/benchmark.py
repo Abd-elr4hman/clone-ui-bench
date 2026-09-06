@@ -25,6 +25,7 @@ CURRENT_PATH = os.getcwd()
 DEFAULT_MODELS = [
     "openai/gpt-6-astra-pro",
     "anthropic/claude-opus-5",
+    "anthropic/claude-fable-5.1",
     "google/gemini-3.8-flash",
     "x-ai/grok-4.6",
     "qwen/qwen3.8-max-0902",
@@ -84,7 +85,9 @@ async def run_scenario(model_name: str, url: str, judge_models: list[str]):
     base64_og = await screenshot_page_async(url, og_file_path)
 
     #
-    response_message = await clone_ui(base64_og, model_name)
+    clone_response = await clone_ui(base64_og, model_name)
+    response_message = clone_response.content
+    clone_cost = clone_response.usage.get("cost")
 
     # extract and render clone
     page = extract_clone(response_message)
@@ -101,6 +104,11 @@ async def run_scenario(model_name: str, url: str, judge_models: list[str]):
             "judge_models": ",".join(judge_models),
             "response_message": response_message,
             "error": "response missing <HTML>/<CSS> blocks",
+            "clone_cost": clone_cost,
+            "judge_cost": 0.0,
+            "total_cost": clone_cost,
+            "clone_prompt_tokens": clone_response.usage.get("prompt_tokens"),
+            "clone_completion_tokens": clone_response.usage.get("completion_tokens"),
             **{f"judge_score::{m}": None for m in judge_models},
             **{f"judge_response::{m}": None for m in judge_models},
         }
@@ -124,7 +132,12 @@ async def run_scenario(model_name: str, url: str, judge_models: list[str]):
 
     # judge panel
     judge_responses = await run_judges(base64_og, base64_clone, judge_models)
-    judge_scores = {m: safe_extract_score(r) for m, r in judge_responses.items()}
+    judge_texts = {m: (r.content if r else None) for m, r in judge_responses.items()}
+    judge_scores = {m: safe_extract_score(t) for m, t in judge_texts.items()}
+
+    judge_cost = sum(
+        (r.usage.get("cost") or 0) for r in judge_responses.values() if r is not None
+    )
 
     scored = [s for s in judge_scores.values() if s is not None]
     mean_score = sum(scored) / len(scored) if scored else None
@@ -138,8 +151,13 @@ async def run_scenario(model_name: str, url: str, judge_models: list[str]):
         "judge_models": ",".join(judge_models),
         "response_message": response_message,
         "error": None if scored else "every judge failed",
+        "clone_cost": clone_cost,
+        "judge_cost": judge_cost,
+        "total_cost": (clone_cost or 0) + judge_cost,
+        "clone_prompt_tokens": clone_response.usage.get("prompt_tokens"),
+        "clone_completion_tokens": clone_response.usage.get("completion_tokens"),
         **{f"judge_score::{m}": s for m, s in judge_scores.items()},
-        **{f"judge_response::{m}": r for m, r in judge_responses.items()},
+        **{f"judge_response::{m}": t for m, t in judge_texts.items()},
     }
 
 
@@ -197,3 +215,10 @@ async def run_benchmark(
 
     # With additional options
     df.to_csv(df_path, index=False, encoding="utf-8", sep=",")
+
+    if "total_cost" in df:
+        print(f"\ntotal spend: ${df['total_cost'].sum():.2f} "
+              f"(clones ${df['clone_cost'].sum():.2f}, judging ${df['judge_cost'].sum():.2f})")
+        per_model = df.groupby("model_name")["total_cost"].sum().sort_values(ascending=False)
+        for name, c in per_model.items():
+            print(f"  {name:32} ${c:6.3f}")
