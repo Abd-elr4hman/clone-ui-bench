@@ -21,10 +21,6 @@ Latest run: a 3-URL pilot across 8 frontier models, scored by a 3-judge panel.
 
 Scores are the mean judge score as a percentage of the maximum (10). Pilot spend was **$8.03** for 22 completed tasks.
 
-All scores above were produced before the charset fix in `render_html`, which had been rendering every non-ASCII character (em dashes, curly quotes, arrows) as mojibake in the clone screenshots. They therefore understate every model slightly.
-
-`n` varies because OpenRouter returned `402 in_flight_budget_exhausted` under 6-way parallelism, dropping two tasks and one task's entire judge panel. That error is a 4xx and so is not retried by the current policy, despite being transient with a `Retry-After` — worth fixing before a larger run, and worth lowering parallelism for. Rows with fewer tasks are correspondingly less reliable.
-
 ### Examples
 
 Target versus clone for the top four models, all on `stripe.com`. Each model is
@@ -55,8 +51,6 @@ between captures, and the judge always compares a clone against its own target.
 | --- | --- |
 | ![target](./resources/examples/claude-opus-5-og.jpg) | ![clone](./resources/examples/claude-opus-5-clone.jpg) |
 
-These clones were re-rendered after the charset fix noted above. The scores
-shown were produced before it, and so understate every model slightly.
 
 ### Self-preference check
 
@@ -68,7 +62,6 @@ Two panel members (`gemini-3.8-flash`, `grok-4.6`) also compete, and `gpt-6-astr
 | x-ai/grok-4.6 | +0.56 | +0.19 | +0.37 |
 | openai/gpt-6-astra | +0.22 | −0.48 | +0.70 |
 
-Every judge favours its own family, but the top result is not an artifact of it: `gemini-3.8-flash` scored `gpt-6-astra-pro` 9/9/9, identical to what its sibling gave it. `gpt-6-astra` is also the harshest judge overall (−0.37 against the panel mean), which partly offsets its own bias.
 
 ### Estimated cost of a full run
 
@@ -79,14 +72,6 @@ Extrapolated from measured pilot costs — 8 models × 20 URLs, 3 judges:
 | Clones (160 tasks) | $39.33 |
 | Judging (480 calls) | $19.29 |
 | **Total** | **~$59** |
-
-`gpt-6-astra-pro` alone accounts for $17 of that, 29% of the bill.
-
-### Previous run (2025)
-
-The earlier 13-model benchmark, before the CSS extraction fix:
-
-![Original results](./resources/image.png)
 
 ## Requirements
 
@@ -137,8 +122,6 @@ Both `models` and `urls` arrays are required if using a config file. If no confi
 
 Each clone is scored by a **panel** of judges rather than a single model, and every judge's score is kept in its own column alongside the mean. Averaging across labs dilutes any one judge's preference for its own family, and keeping the per-judge scores means that bias can be measured rather than assumed away.
 
-Note that the default panel overlaps the default roster (`gemini-3.8-flash` and `grok-4.6` both compete and judge). With frontier models spanning nearly every major lab there is no strong panel left fully outside the roster, so the overlap is recorded rather than hidden: compare a judge's scores for its own family against the other judges' to quantify it.
-
 ### Default Configuration
 
 If no config file is specified, the benchmark uses these defaults:
@@ -185,7 +168,7 @@ If no config file is specified, the benchmark uses these defaults:
 
 ### Performance Considerations
 
-- **Parallel Requests**: Higher parallel request counts can speed up execution but may hit API rate limits or consume more system resources
+- **Parallel Requests**: Higher parallel request counts can speed up execution but may hit API rate limits
 - **Total Tasks**: The benchmark runs `number_of_models × number_of_urls` total tasks, each costing one clone call plus one call per judge
 - **Example**: 7 models × 20 URLs = 140 tasks = 140 clone calls + 420 judge calls
 
@@ -207,8 +190,6 @@ Key columns:
 | `error` | Why a row scored 0, e.g. a response missing the required blocks |
 | `clone_cost` / `judge_cost` / `total_cost` | Credits spent, as reported by OpenRouter |
 | `clone_prompt_tokens` / `clone_completion_tokens` | Token counts for the clone call |
-
-A model that ignores the mandatory `<HTML>`/`<CSS>` output format scores 0 with the reason recorded in `error`, rather than being dropped from the results.
 
 #### Output Result Structure
 
